@@ -1,0 +1,6 @@
+1. Google Search Box     → #APjFqb
+2. Google Email Input    → #identifierId
+3. Google Next Button    → #identifierNext button
+4. Create Account Button → button[jsname="LgbsSe"]
+5. Dropdown              → select[name="cars"]
+6. Password Input        → input[type="password"]
