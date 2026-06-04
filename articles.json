@@ -1,0 +1,31 @@
+{
+  "scraped_at": "2026-06-04T22:43:47.774044",
+  "source": "https://news.ycombinator.com",
+  "articles": [
+    {
+      "rank": 1,
+      "title": "VoidZero Is Joining Cloudflare",
+      "url": "https://blog.cloudflare.com/voidzero-joins-cloudflare/"
+    },
+    {
+      "rank": 2,
+      "title": "KVarN: Native vLLM KV-cache quantization back end by Huawei",
+      "url": "https://github.com/huawei-csl/KVarN"
+    },
+    {
+      "rank": 3,
+      "title": "Ian's Secure Shoelace Knot",
+      "url": "https://www.fieggen.com/shoelace/secureknot.htm"
+    },
+    {
+      "rank": 4,
+      "title": "Now Is the Best Time to Be a Duct Tape Engineer",
+      "url": "https://derwiki.medium.com/now-is-the-best-time-to-be-a-duct-tape-engineer-eefc1d141c23"
+    },
+    {
+      "rank": 5,
+      "title": "They’re made out of weights",
+      "url": "https://maxleiter.com/blog/weights"
+    }
+  ]
+}

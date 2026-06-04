@@ -1,0 +1,37 @@
+{
+  "run_at": "2026-06-04T22:47:33.406537",
+  "tabs_opened": 5,
+  "tabs_kept": 1,
+  "results": [
+    {
+      "index": 0,
+      "url": "https://news.ycombinator.com",
+      "title": "Hacker News",
+      "error": null
+    },
+    {
+      "index": 1,
+      "url": "https://www.bbc.com/news",
+      "title": "BBC News - Breaking news, video and the latest top stories from the U.S. and around the world",
+      "error": null
+    },
+    {
+      "index": 2,
+      "url": "https://github.com/trending",
+      "title": "Trending repositories on GitHub today \u00b7 GitHub",
+      "error": null
+    },
+    {
+      "index": 3,
+      "url": "https://www.python.org",
+      "title": "Welcome to Python.org",
+      "error": null
+    },
+    {
+      "index": 4,
+      "url": "https://playwright.dev/python/docs/intro",
+      "title": "Installation | Playwright Python",
+      "error": null
+    }
+  ]
+}
