@@ -1,0 +1,134 @@
+[
+  {
+    "command": "Go to BBC News website",
+    "result": {
+      "action": "navigate",
+      "target_url": "https://www.bbc.com/news",
+      "data": {},
+      "steps": [
+        "Open browser",
+        "Navigate to https://www.bbc.com/news",
+        "Wait for page to load"
+      ]
+    }
+  },
+  {
+    "command": "Fill the signup form with name John and email john@test.com",
+    "result": {
+      "action": "fill_form",
+      "target_url": null,
+      "data": {
+        "name": "John",
+        "email": "john@test.com"
+      },
+      "steps": [
+        "Locate name field",
+        "Fill name with John",
+        "Locate email field",
+        "Fill email with john@test.com",
+        "Submit form"
+      ]
+    }
+  },
+  {
+    "command": "Email this summary to my boss",
+    "result": {
+      "action": "email",
+      "target_url": null,
+      "data": {
+        "to": "boss",
+        "subject": "Summary",
+        "body": "summary content"
+      },
+      "steps": [
+        "Open email client",
+        "Set recipient to boss",
+        "Paste summary as body",
+        "Send email"
+      ]
+    }
+  },
+  {
+    "command": "Summarize the current page",
+    "result": {
+      "action": "summarize",
+      "target_url": null,
+      "data": {},
+      "steps": [
+        "Extract all text from current page",
+        "Send text to LLM",
+        "Return summary to user"
+      ]
+    }
+  },
+  {
+    "command": "Click the submit button",
+    "result": {
+      "action": "click",
+      "target_url": null,
+      "data": {
+        "element": "submit button"
+      },
+      "steps": [
+        "Find submit button on page",
+        "Click it",
+        "Wait for response"
+      ]
+    }
+  },
+  {
+    "command": "Apply to this job",
+    "result": {
+      "action": "clarify",
+      "question": "I need a bit more info \u2014 what is the URL of the job posting you want to apply to?"
+    }
+  },
+  {
+    "command": "Close all tabs",
+    "result": {
+      "action": "navigate",
+      "target_url": null,
+      "data": {},
+      "steps": [
+        "Close all open tabs",
+        "Confirm browser is empty"
+      ]
+    }
+  },
+  {
+    "command": "Search for Python tutorials on Google",
+    "result": {
+      "action": "navigate",
+      "target_url": "https://www.google.com/search?q=Python+tutorials",
+      "data": {},
+      "steps": [
+        "Open browser",
+        "Navigate to https://www.google.com",
+        "Enter search query 'Python tutorials'",
+        "Submit search",
+        "Wait for results to load"
+      ]
+    }
+  },
+  {
+    "command": "Download the PDF from this page",
+    "result": {
+      "action": "clarify",
+      "question": "I need a bit more info \u2014 what is the URL of the page with the PDF you want to download?"
+    }
+  },
+  {
+    "command": "Open YouTube and play lo-fi music",
+    "result": {
+      "action": "navigate",
+      "target_url": "https://www.youtube.com/results?search_query=lo-fi+music",
+      "data": {},
+      "steps": [
+        "Open browser",
+        "Navigate to https://www.youtube.com/results?search_query=lo-fi+music",
+        "Wait for page to load",
+        "Play the first video"
+      ]
+    }
+  }
+]
