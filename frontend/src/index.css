@@ -1,0 +1,411 @@
+/* ─────────────────────────────────────────────────────────────
+   Design tokens
+   Concept: "agent console" — you're watching a live process think
+   and act, not filling out a form. Dark, quiet chrome; the activity
+   log is the signature element, styled like a real terminal feed
+   with color-coded line types (reasoning vs tool result vs error).
+───────────────────────────────────────────────────────────────*/
+:root {
+  --bg: #0F1115;
+  --panel: #161A22;
+  --panel-raised: #1C212C;
+  --border: #262B36;
+  --border-soft: #1E232D;
+
+  --text: #E8E6E1;
+  --text-muted: #8B93A7;
+  --text-dim: #565F73;
+
+  --accent: #F2A65A;        /* amber — agent reasoning / active state */
+  --accent-soft: #F2A65A22;
+  --success: #5FD4C0;       /* teal-mint — tool success */
+  --success-soft: #5FD4C022;
+  --danger: #E2637A;        /* soft rose — tool failure / error */
+  --danger-soft: #E2637A22;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, textarea {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* Scrollbar, subtle */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── App shell ─────────────────────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.app-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+
+.app-title .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.app-nav {
+  display: flex;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+
+.app-nav button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-nav button:hover { color: var(--text); }
+
+.app-nav button.active {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.conn-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.conn-dot.connected {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.conn-dot.error {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.app-main {
+  flex: 1;
+  padding: 24px 28px 28px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── Command bar ───────────────────────────────────────────── */
+.command-bar {
+  display: flex;
+  gap: 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 6px 6px 16px;
+  align-items: center;
+}
+
+.command-bar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 14px;
+  padding: 10px 0;
+}
+
+.command-bar input::placeholder {
+  color: var(--text-dim);
+}
+
+.command-bar button {
+  background: var(--accent);
+  color: #1A1206;
+  border: none;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.command-bar button:hover:not(:disabled) { opacity: 0.9; }
+.command-bar button:active:not(:disabled) { transform: scale(0.98); }
+
+.command-bar button:disabled {
+  background: var(--border);
+  color: var(--text-dim);
+  cursor: not-allowed;
+}
+
+/* ── Activity log — the signature element ─────────────────── */
+.activity-log {
+  background: #0B0D11;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  flex: 1;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.activity-log::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-soft), transparent);
+}
+
+.activity-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.activity-log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.log-line {
+  display: flex;
+  gap: 10px;
+  padding: 2px 0;
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.log-line .marker {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+}
+
+.log-line.command .marker { color: var(--text-dim); }
+.log-line.command .text { color: var(--text-muted); }
+
+.log-line.reasoning .marker { color: var(--accent); }
+.log-line.reasoning .text { color: var(--text); }
+
+.log-line.success .marker { color: var(--success); }
+.log-line.success .text { color: var(--text-muted); }
+
+.log-line.error .marker { color: var(--danger); }
+.log-line.error .text { color: var(--danger); opacity: 0.9; }
+
+.log-line.result .marker { color: var(--text); }
+.log-line.result .text { color: var(--text); font-weight: 500; }
+.log-line.result {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.log-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: var(--accent);
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.log-empty {
+  color: var(--text-dim);
+  font-style: normal;
+  padding: 8px 0;
+}
+
+/* ── Profile settings ──────────────────────────────────────── */
+.profile-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.profile-panel h2 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.profile-panel .subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 20px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.field-grid .field.full { grid-column: 1 / -1; }
+
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.field input, .field textarea {
+  width: 100%;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.field input:focus, .field textarea:focus {
+  border-color: var(--accent);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 90px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #1A1206;
+  border: none;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btn-primary:hover:not(:disabled) { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.save-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.save-status.ok { color: var(--success); }
+.save-status.err { color: var(--danger); }
+
+@media (max-width: 640px) {
+  .field-grid { grid-template-columns: 1fr; }
+  .app-main { padding: 16px; }
+}
