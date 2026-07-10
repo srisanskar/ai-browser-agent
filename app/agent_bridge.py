@@ -1,7 +1,7 @@
 """
 agent_bridge.py
 ----------------
-Real integration with the Week 4 agent (script5_agent.py — LangGraph ReAct
+Real integration with the agent (script5_agent.py — LangGraph ReAct
 agent + synchronous Playwright + Groq).
 
 Why a SEPARATE PROCESS, not a thread
@@ -10,30 +10,18 @@ Playwright's sync API needs to launch a subprocess (the browser driver).
 On Windows, subprocess creation only works under the Proactor event loop —
 but FastAPI/uvicorn/anyio can end up forcing a Selector event loop for their
 own socket handling, and that choice can leak into any thread in the same
-process no matter what event-loop policy we set beforehand. The result is a
-bare `NotImplementedError` the instant Playwright tries to start, with no
-useful message.
+process no matter what event-loop policy we set beforehand. Running the
+agent in a genuinely separate OS process sidesteps this entirely.
 
-Running the agent in a genuinely separate OS process sidesteps this
-entirely: that process gets its own clean, default asyncio state, exactly
-like running `python script5_agent.py` directly — which is what worked in
-Week 4. Communication with the parent (FastAPI) process happens over two
-`multiprocessing.Queue`s:
-
-  - cmd_queue   : parent -> child, one {"command": "..."} per /command call
-  - event_queue : child -> parent, "step" / "result" / "error" events
-
-The child process launches the browser ONCE and keeps it open across
-commands (matching script5_agent.py's original interactive_mode design),
-so you don't pay browser-launch cost on every single command.
+Communication with the parent (FastAPI) process happens over two
+multiprocessing.Queues: cmd_queue (parent -> child) and event_queue
+(child -> parent, "step"/"result"/"error" events).
 
 Setup required
 ==============
-  1. Put script5_agent.py (and resume.pdf if you use it) in the project
-     ROOT, i.e. next to requirements.txt, one level above app/.
-  2. Create a .env file in the project root with:
-         GROQ_API_KEY=your_key_here
-  3. `playwright install chromium` (one-time, downloads the browser binary)
+  1. script5_agent.py in the project ROOT, one level above app/.
+  2. .env in the project root with GROQ_API_KEY=your_key_here
+  3. `playwright install chromium` (one-time)
 """
 
 import asyncio
@@ -60,11 +48,28 @@ def _worker_main(cmd_queue, event_queue):
     import time
     from pathlib import Path as _Path
 
-    # script5_agent.py lives in the project root (one level above app/)
     sys.path.insert(0, str(_Path(__file__).parent.parent))
 
-    from script5_agent import create_agent, close_browser
+    from script5_agent import create_agent, close_browser, CORE_TOOLS, FORM_TOOLS, SUMMARY_TOOLS
     from langchain_core.messages import AIMessage, ToolMessage
+
+    _FORM_KEYWORDS = (
+        "form", "fill", "field", "apply", "application", "sign up", "signup",
+        "register", "registration", "checkout"
+    )
+    _SUMMARY_KEYWORDS = (
+        "summarize", "summary", "summarise", "tldr", "compare", "comparison",
+        "analyze", "analyse", "job description", "recap"
+    )
+
+    def classify_command(command: str) -> list[str]:
+        text = command.lower()
+        tools = list(CORE_TOOLS)
+        if any(k in text for k in _FORM_KEYWORDS):
+            tools += FORM_TOOLS
+        if any(k in text for k in _SUMMARY_KEYWORDS):
+            tools += SUMMARY_TOOLS
+        return tools
 
     def describe(msg) -> str:
         if isinstance(msg, AIMessage):
@@ -79,7 +84,8 @@ def _worker_main(cmd_queue, event_queue):
         return str(getattr(msg, "content", msg))
 
     try:
-        agent = create_agent()  # launches the browser once, in THIS process
+        from script5_agent import get_page
+        get_page()
         event_queue.put({"type": "worker_ready"})
     except Exception as e:
         event_queue.put({"type": "startup_error", "error": f"{type(e).__name__}: {e}"})
@@ -91,8 +97,35 @@ def _worker_main(cmd_queue, event_queue):
             close_browser()
             break
 
+        if item.get("direct_action") == "submit_current_form":
+            from script5_agent import submit_current_form as _submit_fn
+            try:
+                result = _submit_fn()
+                event_queue.put({"type": "direct_result", "output": result})
+            except Exception as e:
+                event_queue.put({"type": "direct_error", "error": f"{type(e).__name__}: {e}"})
+            continue
+
         command = item["command"]
-        max_retries = 3
+        tool_names = classify_command(command)
+        event_queue.put({
+            "type": "step", "step": 0,
+            "message": f"🧭 Routed to tools: {', '.join(tool_names)}",
+        })
+
+        # Retry plan uses only CONFIRMED-VALID, non-deprecated Groq models
+        # (per console.groq.com/docs/deprecations): openai/gpt-oss-120b is
+        # the official recommended replacement for the deprecated
+        # llama-3.3-70b-versatile. openai/gpt-oss-20b as a lighter fallback.
+        retry_plan = [
+            {"temperature": 0, "model": "openai/gpt-oss-120b"},
+            {"temperature": 0.3, "model": "openai/gpt-oss-120b"},
+            {"temperature": 0, "model": "openai/gpt-oss-20b"},
+            {"temperature": 0.3, "model": "openai/gpt-oss-20b"},
+        ]
+        max_retries = len(retry_plan)
+        agent = create_agent(temperature=retry_plan[0]["temperature"], tool_names=tool_names, model=retry_plan[0]["model"])
+
         for attempt in range(1, max_retries + 1):
             try:
                 seen = 0
@@ -113,11 +146,13 @@ def _worker_main(cmd_queue, event_queue):
                 error_str = str(e)
                 is_retryable = "tool_use_failed" in error_str or "Failed to call a function" in error_str
                 if is_retryable and attempt < max_retries:
+                    next_cfg = retry_plan[attempt]
                     event_queue.put({
                         "type": "step", "step": 0,
-                        "message": f"⚠️ Groq returned a malformed tool call, retrying ({attempt}/{max_retries})...",
+                        "message": f"⚠️ Malformed tool call, retrying with model={next_cfg['model']} temperature={next_cfg['temperature']} ({attempt}/{max_retries - 1})...",
                     })
                     time.sleep(2)
+                    agent = create_agent(temperature=next_cfg["temperature"], tool_names=tool_names, model=next_cfg["model"])
                     continue
                 event_queue.put({"type": "error", "error": f"{type(e).__name__}: {e}"})
                 break
@@ -156,7 +191,7 @@ async def run_agent(command: str, on_step: OnStep) -> dict:
 
             etype = event.get("type")
             if etype == "worker_ready":
-                continue  # only happens once, right after browser launch
+                continue
             if etype == "startup_error":
                 raise RuntimeError(f"Failed to start the agent/browser: {event['error']}")
             if etype == "step":
@@ -165,6 +200,22 @@ async def run_agent(command: str, on_step: OnStep) -> dict:
                 return {"output": event["output"]}
             elif etype == "error":
                 raise RuntimeError(event["error"])
+
+
+async def submit_current_form() -> str:
+    loop = asyncio.get_event_loop()
+    async with _command_lock:
+        _ensure_worker()
+        _cmd_queue.put({"direct_action": "submit_current_form"})
+        try:
+            event = await loop.run_in_executor(None, lambda: _event_queue.get(timeout=30))
+        except pyqueue.Empty:
+            raise RuntimeError("Submit action timed out with no response after 30s.")
+        if event.get("type") == "direct_result":
+            return event["output"]
+        elif event.get("type") == "direct_error":
+            raise RuntimeError(event["error"])
+        raise RuntimeError(f"Unexpected event during submit: {event}")
 
 
 async def shutdown_agent():

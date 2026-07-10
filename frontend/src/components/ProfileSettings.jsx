@@ -87,6 +87,23 @@ export default function ProfileSettings() {
           )}
         </div>
       </form>
+
+      {profile.extra_fields && Object.keys(profile.extra_fields).length > 0 && (
+        <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px dashed var(--border)' }}>
+          <h2 style={{ fontSize: 13 }}>Learned along the way</h2>
+          <p className="subtitle" style={{ marginBottom: 12 }}>
+            Fields the agent picked up automatically while filling out forms — no manual entry needed.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', rowGap: 8, columnGap: 12, fontSize: 13 }}>
+            {Object.entries(profile.extra_fields).map(([k, v]) => (
+              <div key={k} style={{ display: 'contents' }}>
+                <span style={{ color: 'var(--text-muted)' }}>{k}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5 }}>{String(v)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

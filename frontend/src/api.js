@@ -43,6 +43,23 @@ export async function saveProfile(profile) {
   return res.json();
 }
 
+export async function submitForm() {
+  const res = await fetch(`${API_BASE}/form/submit`, { method: 'POST' });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.detail || `POST /form/submit failed: ${res.status}`);
+  }
+  return res.json(); // { result: "..." }
+}
+
+export async function getSummaries() {
+  const res = await fetch(`${API_BASE}/summaries`);
+  if (!res.ok) {
+    throw new Error(`GET /summaries failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 export function openTaskSocket(taskId) {
   return new WebSocket(`${WS_BASE}/ws/${taskId}`);
 }

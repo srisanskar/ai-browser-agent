@@ -35,6 +35,10 @@ class UserProfile(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     resume_text: Optional[str] = None
+    # Anything else the agent learns while filling forms — LinkedIn URL,
+    # college, degree, skills, etc. Grows without a schema migration
+    # every time a new field type shows up (Module 6).
+    extra_fields: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {
         "json_schema_extra": {
@@ -44,9 +48,24 @@ class UserProfile(BaseModel):
                 "phone": "9876543210",
                 "address": "12 MG Road, Kanpur, UP",
                 "resume_text": "Experienced software engineer with 5 years...",
+                "extra_fields": {"linkedin_url": "https://linkedin.com/in/arjun", "college": "IIT Kanpur"},
             }
         }
     }
+
+
+class Summary(BaseModel):
+    """A saved page/URL summary — Module 3's history, and what the UI's
+    Summaries tab reads from."""
+
+    id: int
+    source_url: Optional[str] = None
+    title: Optional[str] = None
+    tldr: str
+    key_points: list[str] = Field(default_factory=list)
+    action_items: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime
 
 
 # ── AgentAction ────────────────────────────────────────────────────────────

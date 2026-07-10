@@ -34,3 +34,16 @@ class UserProfile(BaseModel):
     phone: Optional[str] = None
     address: Optional[str] = None
     resume_text: Optional[str] = None
+    # Flexible bucket for anything else the agent learns along the way —
+    # LinkedIn URL, college, degree, skills, etc. Grows without a schema
+    # migration every time a new field type shows up (Module 6).
+    extra_fields: dict[str, Any] = {}
+
+
+class SummaryResponse(BaseModel):
+    id: int
+    source_url: Optional[str] = None
+    title: Optional[str] = None
+    summary_text: str
+    tags: list[str] = []
+    created_at: str
