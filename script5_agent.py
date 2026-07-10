@@ -60,34 +60,31 @@ _page: Page = None
 
 def _get_page_impl() -> Page:
     global _playwright_instance, _browser, _context, _page
-
-    # SELF-HEALING CHECK: the original version of this function only ever
-    # checked `if _page is None`, meaning it launched a browser exactly once
-    # and then returned that same Page object forever — even after it had
-    # been closed (window closed by hand, crash, etc). Every tool call after
-    # that point failed identically ("Target page, context or browser has
-    # been closed") no matter what URL was passed, because it's the SAME
-    # dead Page being reused. Now we actually check liveness and relaunch.
-    needs_relaunch = (
-        _page is None
-        or _page.is_closed()
-        or _browser is None
-        or not _browser.is_connected()
-    )
+    needs_relaunch = _page is None
+    if not needs_relaunch:
+        try:
+            # If the window was closed manually (or crashed), this raises —
+            # that's our signal to relaunch instead of handing back a dead page.
+            _ = _page.url
+            if _page.is_closed():
+                needs_relaunch = True
+        except Exception:
+            needs_relaunch = True
 
     if needs_relaunch:
-        for obj in (_context, _browser, _playwright_instance):
-            try:
-                if obj:
-                    obj.close() if hasattr(obj, "close") else obj.stop()
-            except Exception:
-                pass
+        # Clean up any half-dead state before relaunching.
+        try:
+            if _browser:
+                _browser.close()
+            if _playwright_instance:
+                _playwright_instance.stop()
+        except Exception:
+            pass
         _playwright_instance = sync_playwright().start()
         _browser = _playwright_instance.chromium.launch(headless=False)
         _context = _browser.new_context()
         _page = _context.new_page()
-        print("🌐 Browser (re)launched.")
-
+        print("🌐 Browser launched.")
     return _page
 
 
@@ -634,6 +631,11 @@ PAGES:
 
 
 # ── Tool registry — used to build COMMAND-SCOPED agents ───────────────────────
+# Groq's llama-3.3-70b-versatile reliably produces malformed
+# <function=...> tool-call output once you hand it too many tool schemas at
+# once (observed consistently with all 14 tools loaded, regardless of
+# temperature). The fix is to never load all 14 at once: classify each
+# incoming command and only bind the tool subset it actually needs.
 TOOL_REGISTRY = {
     "navigate_to": navigate_to,
     "click_element": click_element,
@@ -687,18 +689,31 @@ def create_agent(temperature: float = 0, tool_names: list[str] | None = None, mo
             "You are an AI browser agent. Control the browser to complete tasks. "
             "Always navigate to a page before clicking or typing. Confirm each action. "
             "Call exactly ONE tool at a time — wait for each result before the next action.\n\n"
-            "FORM FILLING: call detect_form_fields first. Match fields by label, not "
-            "position — never fill a field whose type obviously mismatches the data "
-            "(e.g. name into a Password field). Use get_profile_value to check known "
-            "data; if MISSING, ask the user instead of guessing, then save_profile_field "
-            "once they answer. Use generate_long_text for SOP/essay-style fields. "
-            "NEVER submit/apply/send — no such tool exists on purpose; just report what "
-            "was filled and what's missing.\n\n"
+            "FORM FILLING: call detect_form_fields first. Then go field by field, "
+            "ONE AT A TIME: for each field, call get_profile_value (NEVER "
+            "get_user_profile — that reads an old legacy file, not the real profile) "
+            "to check the data. As soon as get_profile_value returns a REAL value "
+            "(not starting with 'MISSING'), immediately call fill_form_field with "
+            "THAT EXACT value on THAT SAME field — do not look up any other field "
+            "name as an alternative, do not second-guess it, just fill it and move to "
+            "the next field. Do not gather all values first and fill at the end — "
+            "fill as you go, one field fully done before starting the next. Match "
+            "fields by label, not position — never fill a field whose type obviously "
+            "mismatches the data (e.g. name into a Password field). If a value truly "
+            "comes back MISSING, ask the user instead of guessing, then "
+            "save_profile_field once they answer, but still fill every OTHER field you "
+            "already have data for — don't let one missing or hard field block the rest. "
+            "Use generate_long_text for SOP/essay-style fields, but if it asks for more "
+            "context you don't have, just skip that one field, mention it in your final "
+            "summary, and move on. Before writing your final summary, check: did you "
+            "actually call fill_form_field for every field you have data for? NEVER "
+            "claim in your summary that a field was filled unless fill_form_field was "
+            "actually called and succeeded for it in this conversation — if you didn't "
+            "get to a field, say it wasn't filled, don't say it was. NEVER submit/apply/"
+            "send — no such tool exists on purpose; just report what was filled and "
+            "what's missing.\n\n"
             "SUMMARIZATION: summarize_current_page for 'summarize this', summarize_url "
-            "for a link, analyze_job_description for postings, compare_pages to compare URLs. "
-            "If a navigation or summarization tool fails with a browser/page error, retry the "
-            "EXACT SAME URL at most once — do not try substituting a different URL, since a "
-            "closed-browser error is not specific to the URL you asked for."
+            "for a link, analyze_job_description for postings, compare_pages to compare URLs."
         )
     )
     return agent
