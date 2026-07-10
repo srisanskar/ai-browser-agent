@@ -18,17 +18,17 @@ flowchart LR
     Memory["Memory<br/>(SQLite: profile + task history)"]
     Ext["External APIs<br/>(Gmail · Calendar · PDF parsing — Week 5B/9)"]
 
-    UI -- "POST /command" --> API
-    API -- "task_id" --> UI
-    UI -- "WS /ws/{task_id}" -.->|live steps| API
-    API -- "runs as background task" --> Agent
+    UI -->|POST /command| API
+    API -->|task_id| UI
+    UI -.->|WS /ws/{task_id} (live steps)| API
+    API -->|runs as background task| Agent
     Agent <--> LLM
     Agent --> Tools
     Agent <--> Memory
     Agent --> Ext
-    Tools -. "step results" .-> Agent
-    Agent -. "step events" .-> API
-    API -. "broadcast" .-> UI
+    Tools -.->|step results| Agent
+    Agent -.->|step events| API
+    API -.->|broadcast| UI
 ```
 
 ## Component responsibilities
