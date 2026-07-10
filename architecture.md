@@ -10,18 +10,18 @@ The system lets a person type a natural-language command, watch an AI agent carr
 
 ```mermaid
 flowchart LR
-    UI["React UI<br/>(Command bar + Activity log)"]
-    API["FastAPI Server<br/>/command · /status · /user/profile · /ws"]
-    Agent["AgentExecutor<br/>(LangGraph ReAct loop)"]
-    LLM["LLM<br/>(Groq · llama-3.3-70b)"]
-    Tools["Browser Tools<br/>(Playwright: navigate, click, type)"]
-    Memory["Memory<br/>(SQLite: profile + task history)"]
-    Ext["External APIs<br/>(Gmail · Calendar · PDF parsing — Week 5B/9)"]
+    UI["React UI"]
+    API["FastAPI Server"]
+    Agent["AgentExecutor"]
+    LLM["LLM"]
+    Tools["Browser Tools"]
+    Memory["Memory"]
+    Ext["External APIs"]
 
     UI -->|POST /command| API
     API -->|task_id| UI
-    UI -.->|WS /ws/{task_id} (live steps)| API
-    API -->|runs as background task| Agent
+    UI -.->|WebSocket| API
+    API -->|background task| Agent
     Agent <--> LLM
     Agent --> Tools
     Agent <--> Memory
